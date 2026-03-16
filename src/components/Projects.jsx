@@ -1,63 +1,83 @@
-import { motion, useInView } from 'framer-motion'
-import { useRef, useEffect, useState } from 'react'
-import { FaStar, FaCodeBranch, FaExternalLinkAlt, FaCss3Alt } from 'react-icons/fa'
-import { SiJavascript, SiPython, SiHtml5, SiTypescript } from 'react-icons/si'
+import { motion, useInView, AnimatePresence } from 'framer-motion'
+import { useMemo, useRef, useState } from 'react'
+import { FaClock, FaExternalLinkAlt, FaFilter, FaSearch } from 'react-icons/fa'
+import { projectsData, projectCategories } from '../data/projectsData'
+import { trackEvent } from '../utils/analytics'
 
-const langIcons = {
-  JavaScript: <SiJavascript style={{ color: '#f7df1e' }} />,
-  Python: <SiPython style={{ color: '#3776ab' }} />,
-  HTML: <SiHtml5 style={{ color: '#e34f26' }} />,
-  CSS: <FaCss3Alt style={{ color: '#1572b6' }} />,
-  TypeScript: <SiTypescript style={{ color: '#3178c6' }} />,
-}
+const FeaturedProjectShot = ({ project }) => {
+  const shots = project.caseStudy?.screenshots?.filter(Boolean) || []
+  const [currentIndex, setCurrentIndex] = useState(0)
 
-const langColors = {
-  JavaScript: '#f7df1e',
-  Python: '#3776ab',
-  HTML: '#e34f26',
-  CSS: '#1572b6',
-  TypeScript: '#3178c6',
-  Shell: '#89e051',
-  Java: '#b07219',
-  'C++': '#f34b7d',
+  const fallbackImage = '/profile.jpg'
+  const currentShot = shots[currentIndex] || fallbackImage
+
+  return (
+    <img
+      src={currentShot}
+      alt={`${project.name} screenshot`}
+      className="featured-project-shot"
+      loading="lazy"
+      decoding="async"
+      referrerPolicy="no-referrer"
+      onError={() => {
+        setCurrentIndex((prev) => {
+          if (prev < shots.length - 1) {
+            return prev + 1
+          }
+          return prev
+        })
+      }}
+    />
+  )
 }
 
 const Projects = () => {
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: '-100px' })
-  const [repos, setRepos] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [hoveredCard, setHoveredCard] = useState(null)
+  const [selectedCategory, setSelectedCategory] = useState('All')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [activeTech, setActiveTech] = useState('All')
+  const [activeCaseStudy, setActiveCaseStudy] = useState(null)
 
-  useEffect(() => {
-    fetch('https://api.github.com/users/Durgeshkr01/repos?sort=updated&per_page=12')
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setRepos(data.filter((r) => !r.fork))
-        }
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
+  const featuredProjects = useMemo(
+    () => projectsData.filter((project) => project.featured).slice(0, 3),
+    [],
+  )
+
+  const techOptions = useMemo(() => {
+    const chips = new Set(projectsData.flatMap((project) => project.tech))
+    return ['All', ...Array.from(chips)]
   }, [])
 
-  const handleMouseMove = (e, index) => {
-    const card = e.currentTarget
-    const rect = card.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    const centerX = rect.width / 2
-    const centerY = rect.height / 2
-    const rotateX = (y - centerY) / 10
-    const rotateY = (centerX - x) / 10
+  const filteredProjects = useMemo(
+    () =>
+      projectsData.filter((project) => {
+        const categoryMatch =
+          selectedCategory === 'All' || project.category === selectedCategory
+        const techMatch = activeTech === 'All' || project.tech.includes(activeTech)
+        const query = searchTerm.trim().toLowerCase()
+        const searchMatch =
+          query.length === 0 ||
+          project.name.toLowerCase().includes(query) ||
+          project.summary.toLowerCase().includes(query) ||
+          project.tech.some((item) => item.toLowerCase().includes(query))
 
-    card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`
-    setHoveredCard(index)
-  }
+        return categoryMatch && techMatch && searchMatch
+      }),
+    [activeTech, searchTerm, selectedCategory],
+  )
 
-  const handleMouseLeave = (e) => {
-    e.currentTarget.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) scale3d(1, 1, 1)'
-    setHoveredCard(null)
+  const openLiveDemo = (project, location) => {
+    if (!project.liveUrl) {
+      return
+    }
+
+    trackEvent('Project card clicked', {
+      project: project.name,
+      location,
+      category: project.category,
+    })
+    window.open(project.liveUrl, '_blank', 'noopener,noreferrer')
   }
 
   return (
@@ -79,74 +99,146 @@ const Projects = () => {
         animate={isInView ? { opacity: 1 } : {}}
         transition={{ delay: 0.3 }}
       >
-        Live from my GitHub — hover for 3D effect, click to explore
+        Featured case studies first, then filterable live projects with tags and search.
       </motion.p>
 
-      {loading ? (
-        <div className="projects-loader">
-          {[...Array(6)].map((_, i) => (
-            <motion.div
-              key={i}
-              className="project-skeleton"
-              animate={{ opacity: [0.3, 0.6, 0.3] }}
-              transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.1 }}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="projects-grid">
-          {repos.map((repo, i) => (
-            <motion.a
-              key={repo.id}
-              href={repo.html_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`project-card hoverable ${hoveredCard === i ? 'hovered' : ''}`}
-              initial={{ opacity: 0, y: 60 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ delay: i * 0.1, duration: 0.5 }}
-              onMouseMove={(e) => handleMouseMove(e, i)}
-              onMouseLeave={handleMouseLeave}
-            >
-              <div className="project-card-inner">
-                <div className="project-card-header">
-                  <div className="project-folder">📂</div>
-                  <FaExternalLinkAlt className="project-link-icon" />
-                </div>
-
-                <h3 className="project-name">{repo.name}</h3>
-                <p className="project-desc">
-                  {repo.description || 'No description — mystery project! 🔮'}
-                </p>
-
-                <div className="project-meta">
-                  {repo.language && (
-                    <span className="project-lang">
-                      <span
-                        className="lang-dot"
-                        style={{ background: langColors[repo.language] || '#8b8b8b' }}
-                      />
-                      {langIcons[repo.language] || null}
-                      {repo.language}
-                    </span>
-                  )}
-                  <span className="project-stars">
-                    <FaStar /> {repo.stargazers_count}
-                  </span>
-                  <span className="project-forks">
-                    <FaCodeBranch /> {repo.forks_count}
-                  </span>
-                </div>
-
-                <div className="project-card-glow" />
+      <div className="featured-projects-grid">
+        {featuredProjects.map((project, i) => (
+          <motion.article
+            key={project.name}
+            className="featured-project-card"
+            initial={{ opacity: 0, y: 45 }}
+            animate={isInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ delay: 0.2 + i * 0.1 }}
+          >
+            <FeaturedProjectShot project={project} />
+            <div className="featured-project-overlay" />
+            <div className="featured-project-content">
+              <span className="featured-project-pill">Featured Project</span>
+              <h3>{project.name}</h3>
+              <p>{project.summary}</p>
+              <div className="project-tech-list">
+                {project.tech.map((tech) => (
+                  <span key={tech}>{tech}</span>
+                ))}
               </div>
-            </motion.a>
+              <div className="project-actions">
+                <button
+                  type="button"
+                  className="project-action-btn"
+                  onClick={() => openLiveDemo(project, 'featured')}
+                >
+                  Live Demo <FaExternalLinkAlt />
+                </button>
+                <button
+                  type="button"
+                  className="project-action-btn secondary"
+                  onClick={() => setActiveCaseStudy(project)}
+                >
+                  Case Study
+                </button>
+              </div>
+            </div>
+          </motion.article>
+        ))}
+      </div>
+
+      <div className="project-filters">
+        <div className="project-search-wrap">
+          <FaSearch />
+          <input
+            type="search"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search by project name, stack, or summary"
+          />
+        </div>
+
+        <div className="project-category-filter">
+          <FaFilter />
+          {projectCategories.map((category) => (
+            <button
+              key={category}
+              type="button"
+              className={selectedCategory === category ? 'active' : ''}
+              onClick={() => setSelectedCategory(category)}
+            >
+              {category}
+            </button>
           ))}
         </div>
-      )}
+
+        <div className="project-tech-chips">
+          {techOptions.map((tech) => (
+            <button
+              key={tech}
+              type="button"
+              className={activeTech === tech ? 'active' : ''}
+              onClick={() => setActiveTech(tech)}
+            >
+              {tech}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="projects-grid">
+        {filteredProjects.map((project, i) => (
+          <motion.article
+            key={project.name}
+            className={`project-card project-card-split ${!project.liveUrl ? 'project-card-disabled' : ''}`}
+            initial={{ opacity: 0, y: 35 }}
+            animate={isInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ delay: i * 0.05, duration: 0.45 }}
+          >
+            <div className="project-card-inner">
+              <div className="project-card-header">
+                <div className="project-folder">🚀</div>
+                <span className="project-updated">
+                  <FaClock /> {project.updated}
+                </span>
+              </div>
+
+              <h3 className="project-name">{project.name}</h3>
+              <p className="project-desc">{project.summary}</p>
+
+              <div className="project-meta">
+                <span className="project-lang">Category: {project.category}</span>
+                <span className="project-stars">Node {project.nodeVersion}</span>
+              </div>
+
+              <div className="project-tech-list compact">
+                {project.tech.map((tech) => (
+                  <span key={tech}>{tech}</span>
+                ))}
+              </div>
+
+              <div className="project-actions">
+                <button
+                  type="button"
+                  className="project-action-btn"
+                  disabled={!project.liveUrl}
+                  onClick={() => openLiveDemo(project, 'all_projects')}
+                >
+                  Live Demo <FaExternalLinkAlt />
+                </button>
+                <button
+                  type="button"
+                  className="project-action-btn secondary"
+                  onClick={() => setActiveCaseStudy(project)}
+                >
+                  Case Study
+                </button>
+              </div>
+
+              <div className="project-card-glow" />
+            </div>
+          </motion.article>
+        ))}
+      </div>
 
       <motion.a
-        href="https://github.com/Durgeshkr01?tab=repositories"
+        href="https://vercel.com/durgeshraj0852-1771s-projects"
         target="_blank"
         rel="noopener noreferrer"
         className="projects-view-all hoverable"
@@ -156,8 +248,74 @@ const Projects = () => {
         whileHover={{ scale: 1.05, boxShadow: '0 0 30px rgba(123,47,255,0.4)' }}
         whileTap={{ scale: 0.95 }}
       >
-        View All on GitHub →
+        View All on Vercel →
       </motion.a>
+
+      <AnimatePresence>
+        {activeCaseStudy && (
+          <motion.div
+            className="case-study-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setActiveCaseStudy(null)}
+          >
+            <motion.article
+              className="case-study-modal"
+              initial={{ opacity: 0, y: 30, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 30, scale: 0.96 }}
+              transition={{ duration: 0.2 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                className="case-study-close"
+                onClick={() => setActiveCaseStudy(null)}
+              >
+                ×
+              </button>
+              <h3>{activeCaseStudy.name} Case Study</h3>
+              <div className="case-study-content">
+                <p>
+                  <strong>Problem:</strong> {activeCaseStudy.caseStudy.problem}
+                </p>
+                <p>
+                  <strong>Approach:</strong> {activeCaseStudy.caseStudy.approach}
+                </p>
+                <p>
+                  <strong>Tech Decisions:</strong> {activeCaseStudy.caseStudy.techDecisions}
+                </p>
+                <p>
+                  <strong>Result:</strong> {activeCaseStudy.caseStudy.result}
+                </p>
+              </div>
+
+              <div className="case-study-shots">
+                {activeCaseStudy.caseStudy.screenshots.map((shot, idx) => (
+                  <img
+                    key={`${activeCaseStudy.name}-shot-${idx}`}
+                    src={shot}
+                    alt={`${activeCaseStudy.name} case study screenshot ${idx + 1}`}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                ))}
+              </div>
+
+              {activeCaseStudy.liveUrl && (
+                <button
+                  type="button"
+                  className="project-action-btn"
+                  onClick={() => openLiveDemo(activeCaseStudy, 'case_study')}
+                >
+                  Open Live Demo <FaExternalLinkAlt />
+                </button>
+              )}
+            </motion.article>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   )
 }

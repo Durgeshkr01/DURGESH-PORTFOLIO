@@ -10,6 +10,8 @@ import Services from './components/Services'
 import Skills from './components/Skills'
 import Projects from './components/Projects'
 import SocialHub from './components/SocialHub'
+import Education from './components/Education'
+import Testimonials from './components/Testimonials'
 import Contact from './components/Contact'
 import Footer from './components/Footer'
 import WhatsAppFloat from './components/WhatsAppFloat'
@@ -39,6 +41,8 @@ function App() {
           <Skills />
           <Projects />
           <SocialHub />
+          <Education />
+          <Testimonials />
           <Contact />
           <Footer />
           <WhatsAppFloat />

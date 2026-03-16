@@ -1,8 +1,10 @@
 import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
-import { FaGithub, FaInstagram, FaLinkedinIn, FaDownload, FaWhatsapp } from 'react-icons/fa'
+import { FaGithub, FaInstagram, FaLinkedinIn, FaDownload, FaWhatsapp, FaCalendarCheck } from 'react-icons/fa'
 import { HiChevronDown } from 'react-icons/hi'
 import ParticleCanvas from './ParticleCanvas'
+import { trackEvent } from '../utils/analytics'
+import { profileData } from '../data/profileData'
 
 const roles = [
   'Full Stack Developer',
@@ -13,6 +15,7 @@ const roles = [
 ]
 
 const Hero = () => {
+  const calendlyUrl = import.meta.env.VITE_CALENDLY_URL || 'https://calendly.com/'
   const [roleIndex, setRoleIndex] = useState(0)
   const [text, setText] = useState('')
   const [deleting, setDeleting] = useState(false)
@@ -40,11 +43,13 @@ const Hero = () => {
   }, [text, deleting, roleIndex])
 
   const socials = [
-    { icon: <FaGithub />, href: 'https://github.com/Durgeshkr01', label: 'GitHub' },
-    { icon: <FaInstagram />, href: 'https://www.instagram.com/dp.visualdiary?igsh=bHhwamptNHpqOW9i', label: 'Instagram' },
-    { icon: <FaLinkedinIn />, href: 'https://www.linkedin.com/in/durgesh-kumar-4709a12a5', label: 'LinkedIn' },
-    { icon: <FaWhatsapp />, href: 'https://wa.me/919939128165', label: 'WhatsApp' },
+    { icon: <FaGithub />, href: profileData.github, label: 'GitHub' },
+    { icon: <FaInstagram />, href: profileData.instagram, label: 'Instagram' },
+    { icon: <FaLinkedinIn />, href: profileData.linkedin, label: 'LinkedIn' },
+    { icon: <FaWhatsapp />, href: profileData.whatsapp, label: 'WhatsApp' },
   ]
+
+  const [firstName, lastName = ''] = profileData.name.toUpperCase().split(' ')
 
   return (
     <section id="hero" className="hero">
@@ -86,7 +91,7 @@ const Hero = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.4, ease: [0.6, 0.01, 0.05, 0.95] }}
         >
-          {'DURGESH'.split('').map((l, i) => (
+          {firstName.split('').map((l, i) => (
             <motion.span
               key={i}
               className="hero-letter"
@@ -96,9 +101,9 @@ const Hero = () => {
             </motion.span>
           ))}
           <br />
-          {'KUMAR'.split('').map((l, i) => (
+          {lastName.split('').map((l, i) => (
             <motion.span
-              key={i + 10}
+              key={i + firstName.length}
               className="hero-letter outline"
               whileHover={{ y: -10, color: '#ff2d75', WebkitTextStroke: '0px', transition: { duration: 0.2 } }}
             >
@@ -118,6 +123,24 @@ const Hero = () => {
           <span className="role-cursor">|</span>
         </motion.div>
 
+        <motion.p
+          className="hero-headline"
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.1 }}
+        >
+          {profileData.subtitle}
+        </motion.p>
+
+        <motion.p
+          className="hero-trustline"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.2 }}
+        >
+          {profileData.trustLine}
+        </motion.p>
+
         <motion.div
           className="hero-socials"
           initial={{ opacity: 0, y: 30 }}
@@ -134,6 +157,11 @@ const Hero = () => {
               whileHover={{ y: -5, boxShadow: '0 10px 30px rgba(0,240,255,0.3)' }}
               whileTap={{ scale: 0.9 }}
               aria-label={s.label}
+              onClick={() => {
+                if (s.label === 'WhatsApp') {
+                  trackEvent('WhatsApp clicked', { source: 'hero_social' })
+                }
+              }}
             >
               {s.icon}
             </motion.a>
@@ -142,31 +170,57 @@ const Hero = () => {
 
         <div className="hero-cta-group">
           <motion.a
-            href="#about"
+            href="#contact"
             className="hero-cta hoverable"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1.6 }}
             whileHover={{ scale: 1.05, boxShadow: '0 0 30px rgba(0,240,255,0.4)' }}
             whileTap={{ scale: 0.95 }}
+            onClick={() => trackEvent('Hire me clicked', { source: 'hero' })}
           >
-            Explore My Work
+            Hire Me
             <span className="cta-arrow">→</span>
           </motion.a>
           
           <motion.a
-            href="/resume.pdf"
-            download
+            href="#projects"
             className="hero-cta-secondary hoverable"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1.8 }}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={() => trackEvent('See projects clicked', { source: 'hero' })}
           >
-            <FaDownload /> Resume
+            See Projects
           </motion.a>
         </div>
+
+        <motion.div
+          className="hero-utility-links"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 2 }}
+        >
+          <a
+            href="/resume-12.pdf"
+            download
+            className="hero-mini-link hoverable"
+            onClick={() => trackEvent('Resume download clicked', { source: 'hero_static_pdf' })}
+          >
+            <FaDownload /> Download Resume
+          </a>
+          <a
+            href={calendlyUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hero-mini-link hoverable"
+            onClick={() => trackEvent('Book call clicked', { source: 'hero' })}
+          >
+            <FaCalendarCheck /> Book a Call
+          </a>
+        </motion.div>
       </div>
 
       <motion.div

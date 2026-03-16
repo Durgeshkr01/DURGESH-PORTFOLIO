@@ -6,35 +6,35 @@ import {
 import {
   SiJavascript, SiTailwindcss, SiMongodb, SiExpress, SiVite, SiFirebase, SiTypescript, SiNextdotjs,
 } from 'react-icons/si'
+import { skillCategoriesData } from '../data/skillsData'
 
-const skillCategories = [
-  {
-    title: 'Frontend',
-    skills: [
-      { name: 'React', icon: <FaReact />, color: '#61dafb' },
-      { name: 'JavaScript', icon: <SiJavascript />, color: '#f7df1e' },
-      { name: 'TypeScript', icon: <SiTypescript />, color: '#3178c6' },
-      { name: 'HTML5', icon: <FaHtml5 />, color: '#e34f26' },
-      { name: 'CSS3', icon: <FaCss3Alt />, color: '#1572b6' },
-      { name: 'Tailwind', icon: <SiTailwindcss />, color: '#38bdf8' },
-      { name: 'Next.js', icon: <SiNextdotjs />, color: '#ffffff' },
-      { name: 'Vite', icon: <SiVite />, color: '#646cff' },
-    ],
-  },
-  {
-    title: 'Backend & Tools',
-    skills: [
-      { name: 'Node.js', icon: <FaNodeJs />, color: '#68a063' },
-      { name: 'Express', icon: <SiExpress />, color: '#ffffff' },
-      { name: 'MongoDB', icon: <SiMongodb />, color: '#47a248' },
-      { name: 'Firebase', icon: <SiFirebase />, color: '#ffca28' },
-      { name: 'Python', icon: <FaPython />, color: '#3776ab' },
-      { name: 'Git', icon: <FaGitAlt />, color: '#f05032' },
-      { name: 'GitHub', icon: <FaGithub />, color: '#ffffff' },
-      { name: 'Figma', icon: <FaFigma />, color: '#f24e1e' },
-    ],
-  },
-]
+const skillMap = {
+  React: { icon: <FaReact />, color: '#61dafb' },
+  JavaScript: { icon: <SiJavascript />, color: '#f7df1e' },
+  TypeScript: { icon: <SiTypescript />, color: '#3178c6' },
+  HTML5: { icon: <FaHtml5 />, color: '#e34f26' },
+  CSS3: { icon: <FaCss3Alt />, color: '#1572b6' },
+  Tailwind: { icon: <SiTailwindcss />, color: '#38bdf8' },
+  'Next.js': { icon: <SiNextdotjs />, color: '#ffffff' },
+  Vite: { icon: <SiVite />, color: '#646cff' },
+  'Node.js': { icon: <FaNodeJs />, color: '#68a063' },
+  Express: { icon: <SiExpress />, color: '#ffffff' },
+  MongoDB: { icon: <SiMongodb />, color: '#47a248' },
+  Firebase: { icon: <SiFirebase />, color: '#ffca28' },
+  Python: { icon: <FaPython />, color: '#3776ab' },
+  Git: { icon: <FaGitAlt />, color: '#f05032' },
+  GitHub: { icon: <FaGithub />, color: '#ffffff' },
+  Figma: { icon: <FaFigma />, color: '#f24e1e' },
+}
+
+const skillCategories = skillCategoriesData.map((category) => ({
+  ...category,
+  skills: category.skills.map((name) => ({
+    name,
+    icon: skillMap[name]?.icon,
+    color: skillMap[name]?.color || '#00f0ff',
+  })),
+}))
 
 const Skills = () => {
   const ref = useRef(null)

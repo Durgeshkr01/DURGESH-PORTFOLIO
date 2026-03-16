@@ -1,13 +1,17 @@
 import { motion, useInView } from 'framer-motion'
 import { useRef, useState } from 'react'
 import { FaPaperPlane, FaEnvelope, FaMapMarkerAlt, FaWhatsapp, FaPhone } from 'react-icons/fa'
+import { trackEvent } from '../utils/analytics'
+import { profileData } from '../data/profileData'
 
 const Contact = () => {
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: '-100px' })
+  const web3FormsKey = import.meta.env.VITE_WEB3FORMS_KEY
   const [focused, setFocused] = useState(null)
   const [status, setStatus] = useState('idle') // idle, sending, sent, error
-  const [formData, setFormData] = useState({ name: '', email: '', message: '' })
+  const [formData, setFormData] = useState({ name: '', email: '', message: '', company: '' })
+  const [toast, setToast] = useState(null)
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -15,38 +19,78 @@ const Contact = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+
+    if (formData.company) {
+      return
+    }
+
+    const lastSubmission = Number(localStorage.getItem('portfolio_last_contact_submit') || 0)
+    const now = Date.now()
+    if (now - lastSubmission < 45000) {
+      setStatus('error')
+      setToast({ type: 'error', message: 'Please wait 45 seconds before sending another message.' })
+      setTimeout(() => setToast(null), 2800)
+      return
+    }
+
     setStatus('sending')
+
+    const mailtoLink = `mailto:${profileData.email}?subject=Portfolio Contact from ${formData.name}&body=${encodeURIComponent(`Name: ${formData.name}\nEmail: ${formData.email}\n\n${formData.message}`)}`
+
+    if (!web3FormsKey) {
+      window.open(mailtoLink, '_blank')
+      setStatus('sent')
+      localStorage.setItem('portfolio_last_contact_submit', String(now))
+      setFormData({ name: '', email: '', message: '', company: '' })
+      setToast({ type: 'success', message: 'Opened your email app. Please send the drafted message.' })
+      trackEvent('Contact submitted', { source: 'mailto_fallback' })
+      setTimeout(() => setStatus('idle'), 3500)
+      setTimeout(() => setToast(null), 3200)
+      return
+    }
     
     try {
-      // Using Web3Forms - free form submission service
-      // Replace YOUR_ACCESS_KEY with your Web3Forms access key from https://web3forms.com
       const response = await fetch('https://api.web3forms.com/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          access_key: 'YOUR_ACCESS_KEY', // Get your free key at https://web3forms.com
+          access_key: web3FormsKey,
           name: formData.name,
           email: formData.email,
           message: formData.message,
           subject: `Portfolio Contact from ${formData.name}`,
+          botcheck: '',
         }),
       })
+
+      const result = await response.json()
       
-      if (response.ok) {
+      if (response.ok && result.success) {
         setStatus('sent')
-        setFormData({ name: '', email: '', message: '' })
+        localStorage.setItem('portfolio_last_contact_submit', String(now))
+        setFormData({ name: '', email: '', message: '', company: '' })
+        setToast({ type: 'success', message: 'Message sent successfully. I will get back soon.' })
+        trackEvent('Contact submitted', { source: 'web3forms' })
         setTimeout(() => setStatus('idle'), 4000)
+        setTimeout(() => setToast(null), 3200)
       } else {
-        setStatus('error')
-        setTimeout(() => setStatus('idle'), 3000)
+        window.open(mailtoLink, '_blank')
+        setStatus('sent')
+        setToast({ type: 'success', message: 'API issue detected. Opened email fallback for reliable delivery.' })
+        trackEvent('Contact submitted', { source: 'api_fallback' })
+        setTimeout(() => setStatus('idle'), 3500)
+        setTimeout(() => setToast(null), 3200)
       }
     } catch {
       // Fallback: open mailto
-      const mailtoLink = `mailto:durgeshraj0852@gmail.com?subject=Portfolio Contact from ${formData.name}&body=${encodeURIComponent(`Name: ${formData.name}\nEmail: ${formData.email}\n\n${formData.message}`)}`
       window.open(mailtoLink, '_blank')
       setStatus('sent')
-      setFormData({ name: '', email: '', message: '' })
+      localStorage.setItem('portfolio_last_contact_submit', String(now))
+      setFormData({ name: '', email: '', message: '', company: '' })
+      setToast({ type: 'success', message: 'Network issue detected. Opened email fallback.' })
+      trackEvent('Contact submitted', { source: 'network_fallback' })
       setTimeout(() => setStatus('idle'), 4000)
+      setTimeout(() => setToast(null), 3200)
     }
   }
 
@@ -58,10 +102,12 @@ const Contact = () => {
         animate={isInView ? { opacity: 1, y: 0 } : {}}
         transition={{ duration: 0.8 }}
       >
-        <span className="section-number">06.</span>
+        <span className="section-number">08.</span>
         <h2 className="section-title">Get In Touch</h2>
         <div className="section-line" />
       </motion.div>
+
+      {toast && <div className={`contact-toast ${toast.type}`}>{toast.message}</div>}
 
       <div className="contact-grid">
         <motion.div
@@ -80,34 +126,35 @@ const Contact = () => {
 
           <div className="contact-details">
             <motion.a 
-              href="https://wa.me/919939128165" 
+              href={profileData.whatsapp}
               target="_blank" 
               rel="noopener noreferrer"
               className="contact-detail contact-whatsapp hoverable" 
               whileHover={{ x: 10, scale: 1.02 }}
+              onClick={() => trackEvent('WhatsApp clicked', { source: 'contact_info' })}
             >
               <FaWhatsapp className="contact-icon whatsapp-icon" />
-              <span>+91 9939128165 (WhatsApp)</span>
+              <span>{profileData.phone} (WhatsApp)</span>
             </motion.a>
             <motion.a 
-              href="mailto:durgeshraj0852@gmail.com"
+              href={`mailto:${profileData.email}`}
               className="contact-detail hoverable" 
               whileHover={{ x: 10 }}
             >
               <FaEnvelope className="contact-icon" />
-              <span>durgeshraj0852@gmail.com</span>
+              <span>{profileData.email}</span>
             </motion.a>
             <motion.a 
-              href="tel:+919939128165"
+              href={`tel:${profileData.phone.replace(/\s+/g, '')}`}
               className="contact-detail hoverable" 
               whileHover={{ x: 10 }}
             >
               <FaPhone className="contact-icon" />
-              <span>+91 9939128165</span>
+              <span>{profileData.phone}</span>
             </motion.a>
             <motion.div className="contact-detail" whileHover={{ x: 10 }}>
               <FaMapMarkerAlt className="contact-icon" />
-              <span>India 🇮🇳</span>
+              <span>{profileData.location}</span>
             </motion.div>
           </div>
 
@@ -164,6 +211,16 @@ const Contact = () => {
             </div>
           ))}
 
+          <input
+            type="text"
+            name="company"
+            tabIndex="-1"
+            autoComplete="off"
+            className="contact-honeypot"
+            value={formData.company}
+            onChange={handleChange}
+          />
+
           <div className={`form-group ${focused === 'message' ? 'focused' : ''}`}>
             <textarea
               name="message"
@@ -198,6 +255,20 @@ const Contact = () => {
               </>
             )}
           </motion.button>
+
+          {status === 'sent' && (
+            <motion.a
+              href={`https://wa.me/${profileData.phone.replace(/\D/g, '')}?text=Hi%20Durgesh!%20I%20just%20submitted%20the%20contact%20form.`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="contact-followup-whatsapp"
+              onClick={() => trackEvent('WhatsApp clicked', { source: 'contact_followup' })}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <FaWhatsapp /> Quick follow-up on WhatsApp
+            </motion.a>
+          )}
         </motion.form>
       </div>
     </section>

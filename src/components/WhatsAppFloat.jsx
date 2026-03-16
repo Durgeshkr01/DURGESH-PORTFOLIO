@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { FaWhatsapp } from 'react-icons/fa'
+import { trackEvent } from '../utils/analytics'
 
 const WhatsAppFloat = () => {
   return (
@@ -17,6 +18,7 @@ const WhatsAppFloat = () => {
       }}
       whileTap={{ scale: 0.9 }}
       aria-label="Chat on WhatsApp"
+      onClick={() => trackEvent('WhatsApp clicked', { source: 'floating_button' })}
     >
       <FaWhatsapp />
       <span className="whatsapp-tooltip">Chat with me!</span>

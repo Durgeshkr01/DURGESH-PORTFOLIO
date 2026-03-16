@@ -35,7 +35,7 @@ const About = () => {
         >
           <div className="about-image-container">
             <div className="about-image-placeholder">
-              <img src="/profile.jpg" alt="Durgesh Kumar" className="about-photo" />
+              <img src="/profile.jpg" alt="Durgesh Kumar" className="about-photo" loading="lazy" decoding="async" />
               <div className="about-image-glitch" />
             </div>
             <div className="about-image-border" />
